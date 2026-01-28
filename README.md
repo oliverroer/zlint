@@ -30,7 +30,7 @@ curl -fsSL https://raw.githubusercontent.com/DonIsaac/zlint/refs/heads/main/task
 
 ### Windows
 ```ps1
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/DonIsaac/zlint/refs/heads/main/tasks/install.ps1"  | Invoke-Expression
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/DonIsaac/zlint/refs/heads/main/tasks/install.ps1" | Invoke-Expression
 ```
 
 ### 🔨 Building from Source

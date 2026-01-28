@@ -18,7 +18,7 @@ A Visual Studio Code extension that integrates the [ZLint](https://github.com/Do
       ```
    - Windows
       ```ps1
-      Invoke-WebRequest -Uri "https://raw.githubusercontent.com/DonIsaac/zlint/refs/heads/main/tasks/install.ps1"  | Invoke-Expression
+      Invoke-WebRequest -Uri "https://raw.githubusercontent.com/DonIsaac/zlint/refs/heads/main/tasks/install.ps1" | Invoke-Expression
       ```
 
 2. Install the extension from the VSCode marketplace or build it locally:
