@@ -64,3 +64,45 @@ pub inline fn assertUnsafe(condition: bool) void {
 test {
     std.testing.refAllDeclsRecursive(@This());
 }
+
+fn tagNamesLen(comptime T: type, comptime separator: []const u8) usize {
+    const tags = std.meta.tags(T);
+
+    const num_tags = tags.len;
+    if (num_tags == 0) {
+        return 0;
+    }
+
+    if (num_tags == 1) {
+        return @tagName(tags[0]).len;
+    }
+
+    var len: usize = separator.len * (tags.len - 1);
+    for (tags) |tag| {
+        len += @tagName(tag).len;
+    }
+
+    return len;
+}
+
+pub fn tagNames(comptime T: type, comptime separator: []const u8) [tagNamesLen(T, separator)]u8 {
+    const len = comptime tagNamesLen(T, separator);
+
+    const tags = std.meta.tags(T);
+
+    var buf: [len]u8 = undefined;
+    var pos: usize = 0;
+
+    for (tags, 0..) |tag, i| {
+        if (i > 0) {
+            std.mem.copyForwards(u8, buf[pos..][0..separator.len], separator);
+            pos += separator.len;
+        }
+
+        const name = @tagName(tag);
+        std.mem.copyForwards(u8, buf[pos..][0..name.len], name);
+        pos += name.len;
+    }
+
+    return buf;
+}

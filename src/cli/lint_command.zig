@@ -29,7 +29,20 @@ pub fn lint(alloc: Allocator, options: Options) !u8 {
     var arena = std.heap.ArenaAllocator.init(alloc);
     defer arena.deinit();
 
-    var reporter = try reporters.Reporter.initKind(options.format, stdout.any(), alloc);
+    const color = blk: {
+        switch (options.color) {
+            .on => break :blk true,
+            .off => break :blk false,
+            .auto => {
+                if (util.env.checkEnvFlag("NO_COLOR", .defined)) {
+                    break :blk !util.env.checkEnvFlag("NO_COLOR", .enabled);
+                }
+
+                break :blk options.color.get_tty_conf() != .no_color;
+            },
+        }
+    };
+    var reporter = try reporters.Reporter.initKind(options.format, color, stdout.any(), alloc);
     defer reporter.deinit();
     reporter.opts.quiet = options.quiet;
     reporter.opts.report_stats = reporter.opts.report_stats and options.summary;
@@ -47,10 +60,14 @@ pub fn lint(alloc: Allocator, options: Options) !u8 {
     const start = std.time.milliTimestamp();
 
     {
-        const fix = if (options.fix or options.fix_dangerously) Fix.Meta{
-            .kind = .fix,
-            .dangerous = options.fix_dangerously,
-        } else Fix.Meta.disabled;
+        const fix =
+            if (options.fix) |mode|
+                Fix.Meta{
+                    .kind = .fix,
+                    .dangerous = mode == .dangerous,
+                }
+            else
+                Fix.Meta.disabled;
 
         // TODO: use options to specify number of threads (if provided)
         var service = try LintService.init(

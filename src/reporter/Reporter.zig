@@ -32,12 +32,13 @@ pub const Reporter = struct {
         return init(formatters.Graphical, formatter, writer, allocator);
     }
 
-    pub fn initKind(kind: formatters.Kind, writer: Writer, allocator: Allocator) Allocator.Error!Reporter {
+    pub fn initKind(kind: formatters.Kind, color: bool, writer: Writer, allocator: Allocator) Allocator.Error!Reporter {
         switch (kind) {
-            .graphical => {
-                // TODO: check terminal support for unicode characters
-                // TODO: any non-falsy value should turn off colors
-                const color = !util.env.checkEnvFlag("NO_COLOR", .enabled);
+            .ascii => {
+                const f = formatters.Graphical.ascii(allocator, color);
+                return init(formatters.Graphical, f, writer, allocator);
+            },
+            .unicode => {
                 const f = formatters.Graphical.unicode(allocator, color);
                 return init(formatters.Graphical, f, writer, allocator);
             },

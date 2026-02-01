@@ -9,25 +9,32 @@ pub const Meta = struct {
 };
 
 pub const Kind = enum {
-    graphical,
+    ascii,
+    unicode,
     github,
     json,
+};
 
-    const FormatMap = std.StaticStringMapWithEql(
-        Kind,
-        std.static_string_map.eqlAsciiIgnoreCase,
-    );
-    const formats = FormatMap.initComptime(&[_]struct { []const u8, Kind }{
-        .{ "github", .github },
-        .{ "gh", .github },
-        .{ "json", .json },
-        .{ "graphical", .graphical },
-        .{ "default", .graphical },
-    });
+pub const Color = enum {
+    /// Determine whether stderr is a terminal or not automatically.
+    auto,
+    /// Assume stderr is not a terminal.
+    off,
+    /// Assume stderr is a terminal.
+    on,
 
-    /// Get a formatter kind by name. Names are case-insensitive.
-    pub fn fromString(str: []const u8) ?Kind {
-        return formats.get(str);
+    pub fn get_tty_conf(color: Color) std.io.tty.Config {
+        return switch (color) {
+            .auto => std.io.tty.detectConfig(std.io.getStdErr()),
+            .on => .escape_codes,
+            .off => .no_color,
+        };
+    }
+
+    pub fn renderOptions(color: Color) std.zig.ErrorBundle.RenderOptions {
+        return .{
+            .ttyconf = get_tty_conf(color),
+        };
     }
 };
 

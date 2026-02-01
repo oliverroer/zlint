@@ -14,34 +14,46 @@ quiet: bool = false,
 /// This is primarily for debugging purposes.
 print_ast: bool = false,
 /// How diagnostics are formatted.
-format: formatter.Kind = .graphical,
+format: formatter.Kind = .ascii,
+/// How diagnostics are colored
+color: formatter.Color = .auto,
 /// Print a summary about # of warnings and errors. Only applies for some formats.
 summary: bool = true,
 /// Instead of walking directories in cwd, read names of files to lint from stdin.
 /// If relative, paths are resolved from the cwd.
 stdin: bool = false,
 /// enable auto fixes
-fix: bool = false,
-/// Like `--fix`, but also enable potentially dangerous fixes.
-fix_dangerously: bool = false,
+fix: ?FixMode = null,
 /// Positional arguments
 args: std.ArrayListUnmanaged([]const u8) = .{},
+
+const FixMode = enum {
+    safe,
+    dangerous,
+};
 
 pub const usage =
     \\Usage: zlint [options] [<dirs>]
 ;
 const help =
-    \\--print-ast <file>  Parse a file and print its AST as JSON
-    \\-f, --format <fmt>  Choose an output format (default, graphical, json, github, gh)
-    \\--no-summary        Do not print a summary after linting
-    \\-S, --stdin         Lint filepaths received from stdin (newline separated)
-    \\--fix               Apply automatic fixes where possible
-    \\--fix-dangerously   Like --fix, but also enable potentially dangerous fixes
-    \\--deny-warnings     Warnings produce a non-zero exit code
-    \\-q, --quiet         Only display error diagnostics
-    \\-V, --verbose       Enable verbose logging   
-    \\-v, --version       Print version and exit
-    \\-h, --help          Show this help message
+    \\Options:
+    \\      --print-ast <file>      Parse a file and print its AST as JSON
+    \\  -f, --format [format]       Choose an output format
+    \\          ascii                   (default) Output appears as ASCII text.
+    \\          unicode                 Output appears as unicode text.
+    \\          json                    Output appears as JSON.
+    \\          github                  Output appears as annotations in GitHub Actions.
+    \\      --color [auto|off|on]   Enable or disable colored output (auto, off, on)
+    \\      --no-summary            Do not print a summary after linting
+    \\  -S, --stdin                 Lint filepaths received from stdin (newline separated)
+    \\      --fix [mode]            Apply automatic fixes where possible
+    \\          safe                    (default) Applie safe fixes
+    \\          dangerous               Like safe, but also enable potentially dangerous fixes
+    \\      --deny-warnings         Warnings produce a non-zero exit code
+    \\  -q, --quiet                 Only display error diagnostics
+    \\  -V, --verbose               Enable verbose logging   
+    \\  -v, --version               Print version and exit
+    \\  -h, --help                  Show this help message
 ;
 const ParseError = error{
     OutOfMemory,
@@ -65,15 +77,27 @@ fn parse(alloc: Allocator, args_iter: anytype, err: ?*Error) ParseError!Options 
     _ = argv.next() orelse return opts;
     while (argv.next()) |arg| {
         if (arg.len == 0) continue;
+
         if (arg[0] != '-') {
             try opts.args.append(alloc, arg);
             continue;
         }
+
         if (eq(arg, "--fix")) {
-            opts.fix = true;
-        } else if (eq(arg, "--fix-dangerously")) {
-            opts.fix_dangerously = true;
-            opts.fix = true;
+            const VALUES = comptime util.tagNames(FixMode, ", ");
+            const err_fmt = "Invalid fix value: {s}. Valid values are " ++ VALUES ++ ".";
+            const value = argv.next() orelse {
+                if (err) |e| {
+                    e.* = Error.fmt(alloc, err_fmt, .{arg}) catch @panic("OOM");
+                }
+                return error.InvalidArg;
+            };
+            opts.fix = stringToEnum(FixMode, value) orelse {
+                if (err) |e| {
+                    e.* = Error.fmt(alloc, err_fmt, .{arg}) catch @panic("OOM");
+                }
+                return error.InvalidArgValue;
+            };
         } else if (eq(arg, "-q") or eq(arg, "--quiet")) {
             opts.quiet = true;
         } else if (eq(arg, "-V") or eq(arg, "--verbose")) {
@@ -85,16 +109,32 @@ fn parse(alloc: Allocator, args_iter: anytype, err: ?*Error) ParseError!Options 
         } else if (eq(arg, "-S") or eq(arg, "--stdin")) {
             opts.stdin = true;
         } else if (eq(arg, "-f") or eq(arg, "--format")) {
-            // TODO: comptime string concat on format names
-            const fmt = argv.next() orelse {
+            const VALUES = comptime util.tagNames(formatter.Kind, ", ");
+            const err_fmt = "Invalid format value: {s}. Valid values are " ++ VALUES ++ ".";
+            const value = argv.next() orelse {
                 if (err) |e| {
-                    e.* = Error.fmt(alloc, "Invalid format name: {s}. Valid names are {s}.", .{ arg, FORMAT_NAMES }) catch @panic("OOM");
+                    e.* = Error.fmt(alloc, err_fmt, .{arg}) catch @panic("OOM");
                 }
                 return error.InvalidArg;
             };
-            opts.format = formatter.Kind.fromString(fmt) orelse {
+            opts.format = stringToEnum(formatter.Kind, value) orelse {
                 if (err) |e| {
-                    e.* = Error.fmt(alloc, "Invalid format name: {s}. Valid names are {s}.", .{ arg, FORMAT_NAMES }) catch @panic("OOM");
+                    e.* = Error.fmt(alloc, err_fmt, .{arg}) catch @panic("OOM");
+                }
+                return error.InvalidArgValue;
+            };
+        } else if (eq(arg, "--color")) {
+            const VALUES = comptime util.tagNames(formatter.Color, ", ");
+            const err_fmt = "Invalid color value: {s}. Valid values are " ++ VALUES ++ ".";
+            const value = argv.next() orelse {
+                if (err) |e| {
+                    e.* = Error.fmt(alloc, err_fmt, .{arg}) catch @panic("OOM");
+                }
+                return error.InvalidArg;
+            };
+            opts.color = stringToEnum(formatter.Color, value) orelse {
+                if (err) |e| {
+                    e.* = Error.fmt(alloc, err_fmt, .{arg}) catch @panic("OOM");
                 }
                 return error.InvalidArgValue;
             };
@@ -129,8 +169,6 @@ pub fn deinit(self: *Options, alloc: std.mem.Allocator) void {
 inline fn eq(arg: anytype, name: @TypeOf(arg)) bool {
     return std.mem.eql(u8, arg, name);
 }
-// TODO: comptime string concat on format names
-const FORMAT_NAMES: []const u8 = "default, graphical, github, gh";
 
 const Options = @This();
 const std = @import("std");
@@ -138,6 +176,7 @@ const util = @import("util");
 const Allocator = std.mem.Allocator;
 const formatter = @import("../reporter.zig").formatter;
 const Error = @import("../Error.zig");
+const stringToEnum = std.meta.stringToEnum;
 
 const t = std.testing;
 
@@ -159,7 +198,7 @@ test parse {
         .{ "zlint", .{} },
         .{ "zlint --", .{} },
         .{ "zlint --print-ast", .{ .print_ast = true } },
-        .{ "zlint --fix", .{ .fix = true } },
+        .{ "zlint --fix", .{ .fix = .safe } },
         .{ "zlint --no-summary", .{ .summary = false } },
         .{ "zlint --verbose", .{ .verbose = true } },
         .{ "zlint -V", .{ .verbose = true } },
