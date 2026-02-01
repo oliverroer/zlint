@@ -47,8 +47,8 @@ const help =
     \\      --no-summary            Do not print a summary after linting
     \\  -S, --stdin                 Lint filepaths received from stdin (newline separated)
     \\      --fix [mode]            Apply automatic fixes where possible
-    \\          safe                    (default) Applie safe fixes
-    \\          dangerous               Like safe, but also enable potentially dangerous fixes
+    \\          safe                    (default) Applies safe fixes
+    \\          dangerous               Like safe, but also applies potentially dangerous fixes
     \\      --deny-warnings         Warnings produce a non-zero exit code
     \\  -q, --quiet                 Only display error diagnostics
     \\  -V, --verbose               Enable verbose logging   
