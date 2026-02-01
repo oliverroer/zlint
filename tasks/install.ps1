@@ -58,7 +58,6 @@ if (-not $GitHubUrl) {
 # Determine target
 $Architecture = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
 $Target = switch ($Architecture) {
-    'X86'    { 'x86_64' }
     'X64'    { 'x86_64' }
     'Arm64'  { 'aarch64' }
     default {
