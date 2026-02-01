@@ -1,11 +1,3 @@
-//! Formats diagnostics in a such a way that they appear as annotations in
-//! Github Actions.
-//!
-//! e.g.
-//! ```
-//! ::error file={name},line={line},endLine={endLine},title={title}::{message}
-//! ```
-
 const JSONFormatter = @This();
 
 pub const meta: Meta = .{
