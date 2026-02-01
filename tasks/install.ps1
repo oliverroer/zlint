@@ -92,8 +92,35 @@ $zLint = Join-Path $zLintDir "zlint.exe"
 Invoke-WebRequest -Uri "$ZlintDownloadUrl" -OutFile $zLint -ErrorAction Stop
 
 # Add ZLint to the PATH
-$pathOk = [Environment]::GetEnvironmentVariable('PATH', 'User').Split(";").Contains($zLintDir)
-if (-not $pathOk) {
-    [Environment]::SetEnvironmentVariable("PATH", "$env:PATH;$zLintDir", "User")
+
+function Set-UserPath {
+    Param(
+        [string]$Value
+    )
+
+    [Environment]::SetEnvironmentVariable('PATH', "$Value", 'User')
+}
+
+function Add-UserPath
+{
+    Param(
+        [string]$Value
+    )
+    
+    $userPath = [Environment]::GetEnvironmentVariable('PATH', 'User')
+    if ((-not $userPath) -or ($userPath.Trim().Length -eq 0)) {
+        Set-UserPath -Value "$Value"
+        return $true
+    }
+
+    if ($userPath.Split(";").Contains($Value)) {
+        return $false
+    } else {
+        Set-UserPath -Value "$userPath;$Value"
+        return $true
+    }
+}
+
+if (Add-UserPath -Value $zLintDir) {
     Write-Host "Added $zLintDir to user PATH. Restart PowerShell to use zlint."
 }
