@@ -68,6 +68,32 @@ pub fn parseArgv(alloc: Allocator, err: ?*Error) ParseError!Options {
     return parse(alloc, argv, err);
 }
 
+fn parseEnumArg(
+    comptime T: type,
+    args_iter: anytype,
+    arg_name: []const u8,
+    alloc: Allocator,
+    err: ?*Error,
+) ParseError!T {
+    var argv = args_iter;
+    const VALUES = comptime util.tagNames(T, "|");
+    const err_fmt = "expected [" ++ VALUES ++ "] after {s}";
+    const value = argv.next() orelse {
+        if (err) |e| {
+            e.* = Error.fmt(alloc, err_fmt, .{arg_name}) catch @panic("OOM");
+        }
+        return error.InvalidArg;
+    };
+    const parsed = stringToEnum(T, value) orelse {
+        if (err) |e| {
+            e.* = Error.fmt(alloc, err_fmt ++ ", found {s}", .{ arg_name, value }) catch @panic("OOM");
+        }
+        return error.InvalidArgValue;
+    };
+
+    return parsed;
+}
+
 fn parse(alloc: Allocator, args_iter: anytype, err: ?*Error) ParseError!Options {
     var argv = args_iter;
     var opts = Options{};
@@ -84,21 +110,7 @@ fn parse(alloc: Allocator, args_iter: anytype, err: ?*Error) ParseError!Options 
         }
 
         if (eq(arg, "--fix")) {
-            const VALUES = comptime util.tagNames(FixMode, "|");
-            const error_message = "expected [" ++ VALUES ++ "] after --fix";
-
-            const value = argv.next() orelse {
-                if (err) |e| {
-                    e.* = Error.newStatic(error_message[0..]);
-                }
-                return error.InvalidArg;
-            };
-            opts.fix = stringToEnum(FixMode, value) orelse {
-                if (err) |e| {
-                    e.* = Error.fmt(alloc, error_message ++ ", found {s}", .{value}) catch @panic("OOM");
-                }
-                return error.InvalidArgValue;
-            };
+            opts.fix = try parseEnumArg(FixMode, argv, arg, alloc, err);
         } else if (eq(arg, "-q") or eq(arg, "--quiet")) {
             opts.quiet = true;
         } else if (eq(arg, "-V") or eq(arg, "--verbose")) {
@@ -110,36 +122,9 @@ fn parse(alloc: Allocator, args_iter: anytype, err: ?*Error) ParseError!Options 
         } else if (eq(arg, "-S") or eq(arg, "--stdin")) {
             opts.stdin = true;
         } else if (eq(arg, "-f") or eq(arg, "--format")) {
-            const VALUES = comptime util.tagNames(formatter.Kind, "|");
-            const error_message = "expected [" ++ VALUES ++ "] after --format";
-
-            const value = argv.next() orelse {
-                if (err) |e| {
-                    e.* = Error.newStatic(error_message[0..]);
-                }
-                return error.InvalidArg;
-            };
-            opts.format = stringToEnum(formatter.Kind, value) orelse {
-                if (err) |e| {
-                    e.* = Error.fmt(alloc, error_message ++ ", found {s}", .{value}) catch @panic("OOM");
-                }
-                return error.InvalidArgValue;
-            };
+            opts.format = try parseEnumArg(formatter.Kind, argv, arg, alloc, err);
         } else if (eq(arg, "--color")) {
-            const VALUES = comptime util.tagNames(formatter.Color, "|");
-            const error_message = "expected [" ++ VALUES ++ "] after --color";
-            const value = argv.next() orelse {
-                if (err) |e| {
-                    e.* = Error.newStatic(error_message[0..]);
-                }
-                return error.InvalidArg;
-            };
-            opts.color = stringToEnum(formatter.Color, value) orelse {
-                if (err) |e| {
-                    e.* = Error.fmt(alloc, error_message ++ ", found {s}", .{value}) catch @panic("OOM");
-                }
-                return error.InvalidArgValue;
-            };
+            opts.color = try parseEnumArg(formatter.Color, argv, arg, alloc, err);
         } else if (eq(arg, "--no-summary")) {
             opts.summary = false;
         } else if (eq(arg, "--print-ast")) {
