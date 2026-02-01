@@ -34,8 +34,8 @@ pub fn lint(alloc: Allocator, options: Options) !u8 {
             .on => break :blk true,
             .off => break :blk false,
             .auto => {
-                if (util.env.checkEnvFlag("NO_COLOR", .defined)) {
-                    break :blk !util.env.checkEnvFlag("NO_COLOR", .enabled);
+                if (util.env.noColor()) {
+                    break :blk false;
                 }
 
                 break :blk options.color.get_tty_conf() != .no_color;

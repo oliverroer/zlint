@@ -46,3 +46,21 @@ pub fn checkEnvFlag(comptime key: []const u8, comptime kind: ValueKind) bool {
         };
     }
 }
+
+// Checks for a NO_COLOR environment variable that, when present and not an empty string
+// (regardless of its value), should prevent the addition of ANSI color.
+//
+// See https://no-color.org/
+pub fn noColor() bool {
+    const key = "NO_COLOR";
+    if (native_os == .windows) {
+        const key_w = unicode.utf8ToUtf16LeStringLiteral(key);
+        const value = std.process.getenvW(key_w) orelse return false;
+        return value.len > 0;
+    } else if (native_os == .wasi and !builtin.link_libc) {
+        @compileError("ahg we need to support WASI?");
+    } else {
+        const value = posix.getenv(key) orelse return false;
+        return value.len > 0;
+    }
+}
