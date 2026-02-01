@@ -171,6 +171,10 @@ test parse {
     const List = std.ArrayListUnmanaged([]const u8);
     const Case = std.meta.Tuple(&[_]type{ []const u8, Options });
 
+    const safe_list: List = brk: {
+        const items = &[_][]const u8{"safe"};
+        break :brk List{ .items = @constCast(items) };
+    };
     const src_list: List = brk: {
         const items = &[_][]const u8{"src"};
         break :brk List{ .items = @constCast(items) };
@@ -185,7 +189,7 @@ test parse {
         .{ "zlint", .{} },
         .{ "zlint --", .{} },
         .{ "zlint --print-ast", .{ .print_ast = true } },
-        .{ "zlint --fix safe", .{ .fix = .safe } },
+        .{ "zlint --fix safe", .{ .fix = .safe, .args = safe_list } },
         .{ "zlint --no-summary", .{ .summary = false } },
         .{ "zlint --verbose", .{ .verbose = true } },
         .{ "zlint -V", .{ .verbose = true } },
@@ -224,5 +228,10 @@ test "invalid --format" {
         error.InvalidArgValue,
         parse(t.allocator, argv, &err),
     );
-    try t.expect(std.mem.indexOf(u8, err.message.borrow(), "Invalid format value") != null);
+
+    try t.expectEqualSlices(
+        u8,
+        "expected [ascii|unicode|github|json] after --format, found this-is-not-a-valid-format",
+        err.message.borrow(),
+    );
 }
