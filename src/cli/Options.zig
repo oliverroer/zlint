@@ -198,7 +198,7 @@ test parse {
         .{ "zlint", .{} },
         .{ "zlint --", .{} },
         .{ "zlint --print-ast", .{ .print_ast = true } },
-        .{ "zlint --fix", .{ .fix = .safe } },
+        .{ "zlint --fix safe", .{ .fix = .safe } },
         .{ "zlint --no-summary", .{ .summary = false } },
         .{ "zlint --verbose", .{ .verbose = true } },
         .{ "zlint -V", .{ .verbose = true } },
@@ -237,5 +237,5 @@ test "invalid --format" {
         error.InvalidArgValue,
         parse(t.allocator, argv, &err),
     );
-    try t.expect(std.mem.indexOf(u8, err.message.borrow(), "Invalid format name") != null);
+    try t.expect(std.mem.indexOf(u8, err.message.borrow(), "Invalid format value") != null);
 }
