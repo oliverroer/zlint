@@ -70,12 +70,11 @@ pub fn parseArgv(alloc: Allocator, err: ?*Error) ParseError!Options {
 
 fn parseEnumArg(
     comptime T: type,
-    args_iter: anytype,
+    argv: anytype,
     arg_name: []const u8,
     alloc: Allocator,
     err: ?*Error,
 ) ParseError!T {
-    var argv = args_iter;
     const VALUES = comptime util.tagNames(T, "|");
     const err_fmt = "expected [" ++ VALUES ++ "] after {s}";
     const value = argv.next() orelse {
@@ -110,7 +109,7 @@ fn parse(alloc: Allocator, args_iter: anytype, err: ?*Error) ParseError!Options 
         }
 
         if (eq(arg, "--fix")) {
-            opts.fix = try parseEnumArg(FixMode, argv, arg, alloc, err);
+            opts.fix = try parseEnumArg(FixMode, &argv, arg, alloc, err);
         } else if (eq(arg, "-q") or eq(arg, "--quiet")) {
             opts.quiet = true;
         } else if (eq(arg, "-V") or eq(arg, "--verbose")) {
@@ -122,9 +121,9 @@ fn parse(alloc: Allocator, args_iter: anytype, err: ?*Error) ParseError!Options 
         } else if (eq(arg, "-S") or eq(arg, "--stdin")) {
             opts.stdin = true;
         } else if (eq(arg, "-f") or eq(arg, "--format")) {
-            opts.format = try parseEnumArg(formatter.Kind, argv, arg, alloc, err);
+            opts.format = try parseEnumArg(formatter.Kind, &argv, arg, alloc, err);
         } else if (eq(arg, "--color")) {
-            opts.color = try parseEnumArg(formatter.Color, argv, arg, alloc, err);
+            opts.color = try parseEnumArg(formatter.Color, &argv, arg, alloc, err);
         } else if (eq(arg, "--no-summary")) {
             opts.summary = false;
         } else if (eq(arg, "--print-ast")) {
@@ -171,10 +170,6 @@ test parse {
     const List = std.ArrayListUnmanaged([]const u8);
     const Case = std.meta.Tuple(&[_]type{ []const u8, Options });
 
-    const safe_list: List = brk: {
-        const items = &[_][]const u8{"safe"};
-        break :brk List{ .items = @constCast(items) };
-    };
     const src_list: List = brk: {
         const items = &[_][]const u8{"src"};
         break :brk List{ .items = @constCast(items) };
@@ -189,7 +184,7 @@ test parse {
         .{ "zlint", .{} },
         .{ "zlint --", .{} },
         .{ "zlint --print-ast", .{ .print_ast = true } },
-        .{ "zlint --fix safe", .{ .fix = .safe, .args = safe_list } },
+        .{ "zlint --fix safe", .{ .fix = .safe } },
         .{ "zlint --no-summary", .{ .summary = false } },
         .{ "zlint --verbose", .{ .verbose = true } },
         .{ "zlint -V", .{ .verbose = true } },
