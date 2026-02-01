@@ -84,17 +84,18 @@ fn parse(alloc: Allocator, args_iter: anytype, err: ?*Error) ParseError!Options 
         }
 
         if (eq(arg, "--fix")) {
-            const VALUES = comptime util.tagNames(FixMode, ", ");
-            const err_fmt = "Invalid fix value: {s}. Valid values are " ++ VALUES ++ ".";
+            const VALUES = comptime util.tagNames(FixMode, "|");
+            const error_message = "expected [" ++ VALUES ++ "] after --fix";
+
             const value = argv.next() orelse {
                 if (err) |e| {
-                    e.* = Error.fmt(alloc, err_fmt, .{arg}) catch @panic("OOM");
+                    e.* = Error.newStatic(error_message[0..]);
                 }
                 return error.InvalidArg;
             };
             opts.fix = stringToEnum(FixMode, value) orelse {
                 if (err) |e| {
-                    e.* = Error.fmt(alloc, err_fmt, .{arg}) catch @panic("OOM");
+                    e.* = Error.fmt(alloc, error_message ++ ", found {s}", .{value}) catch @panic("OOM");
                 }
                 return error.InvalidArgValue;
             };
@@ -109,32 +110,33 @@ fn parse(alloc: Allocator, args_iter: anytype, err: ?*Error) ParseError!Options 
         } else if (eq(arg, "-S") or eq(arg, "--stdin")) {
             opts.stdin = true;
         } else if (eq(arg, "-f") or eq(arg, "--format")) {
-            const VALUES = comptime util.tagNames(formatter.Kind, ", ");
-            const err_fmt = "Invalid format value: {s}. Valid values are " ++ VALUES ++ ".";
+            const VALUES = comptime util.tagNames(formatter.Kind, "|");
+            const error_message = "expected [" ++ VALUES ++ "] after --format";
+
             const value = argv.next() orelse {
                 if (err) |e| {
-                    e.* = Error.fmt(alloc, err_fmt, .{arg}) catch @panic("OOM");
+                    e.* = Error.newStatic(error_message[0..]);
                 }
                 return error.InvalidArg;
             };
             opts.format = stringToEnum(formatter.Kind, value) orelse {
                 if (err) |e| {
-                    e.* = Error.fmt(alloc, err_fmt, .{arg}) catch @panic("OOM");
+                    e.* = Error.fmt(alloc, error_message ++ ", found {s}", .{value}) catch @panic("OOM");
                 }
                 return error.InvalidArgValue;
             };
         } else if (eq(arg, "--color")) {
-            const VALUES = comptime util.tagNames(formatter.Color, ", ");
-            const err_fmt = "Invalid color value: {s}. Valid values are " ++ VALUES ++ ".";
+            const VALUES = comptime util.tagNames(formatter.Color, "|");
+            const error_message = "expected [" ++ VALUES ++ "] after --color";
             const value = argv.next() orelse {
                 if (err) |e| {
-                    e.* = Error.fmt(alloc, err_fmt, .{arg}) catch @panic("OOM");
+                    e.* = Error.newStatic(error_message[0..]);
                 }
                 return error.InvalidArg;
             };
             opts.color = stringToEnum(formatter.Color, value) orelse {
                 if (err) |e| {
-                    e.* = Error.fmt(alloc, err_fmt, .{arg}) catch @panic("OOM");
+                    e.* = Error.fmt(alloc, error_message ++ ", found {s}", .{value}) catch @panic("OOM");
                 }
                 return error.InvalidArgValue;
             };
